@@ -21,6 +21,7 @@
             <div class="form-group">
                 <label asp-for="Brewery" class="control-label"></label>
                 <input name="breweryName" id="breweryName" value="@ViewBag.BreweryName" class="form-control">
+                <input type="hidden" asp-for="BreweryId"/>
             </div>
             <div class="form-group">
                 <label asp-for="Style" class="control-label"></label>

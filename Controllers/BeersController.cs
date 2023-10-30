@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using BrewBuddy.Data;
 using BrewBuddy.Models;
 using System.Reflection.Metadata;
+using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace BrewBuddy.Controllers
 {
@@ -125,7 +127,66 @@ namespace BrewBuddy.Controllers
             {
                 try
                 {
-                    Console.WriteLine(beer.BreweryId);
+                    // check if brewery to update to is in database. This default returns 0 if nothing is found. Ids shouldn't ever be 0?
+                    var currentBreweryId = beer.BreweryId;
+                    int updateToBreweryId = await _context.Breweries
+                                           .Where(b => b.Name == breweryName)
+                                           .Select(b => b.Id)
+                                           .FirstOrDefaultAsync();
+                    if (currentBreweryId != null && currentBreweryId == updateToBreweryId) {
+                        _context.Beers.Update(beer);
+                        await _context.SaveChangesAsync();
+                    }
+                    else if (updateToBreweryId != 0 && currentBreweryId != null)
+                    {
+                        beer.BreweryId = updateToBreweryId;
+                        _context.Beers.Update(beer);
+                        await _context.SaveChangesAsync();
+                        // check if previousBreweryId was only instantiated with Beer at hand.
+                        int count = await _context.Beers
+                                              .Where(b => b.Id == currentBreweryId)
+                                              .CountAsync();
+                        if (count < 1)
+                        {
+                            var breweryToDelete = await _context.Breweries.FindAsync(currentBreweryId);
+                            if (breweryToDelete != null)
+                            {
+                                _context.Breweries.Remove(breweryToDelete);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        // Brewery is not in database and needs to to be created.
+                        Brewery newBrewery = new() { Name = breweryName };
+                        _context.Breweries.Add(newBrewery);
+                        _context.SaveChanges();
+
+                        int newBreweryId = await _context.Breweries
+                                                 .Where(b => b.Name == breweryName)
+                                                 .Select(b => b.Id)
+                                                 .FirstOrDefaultAsync();
+                        beer.BreweryId = newBreweryId;
+                        _context.Beers.Update(beer);
+                        await _context.SaveChangesAsync();
+
+                        int count = await _context.Beers
+                                    .Where(b => b.BreweryId == currentBreweryId)
+                                    .CountAsync();
+                        if (count < 1)
+                        {
+                            var breweryToDelete = await _context.Breweries.FindAsync(currentBreweryId);
+                            if (breweryToDelete != null)
+                            {
+                                _context.Breweries.Remove(breweryToDelete);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+
+                    }
+                    // End of try
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -227,5 +288,6 @@ namespace BrewBuddy.Controllers
         {
             return (_context.Breweries.Any(e => e.Id == id));
         }
+
     }
 }
