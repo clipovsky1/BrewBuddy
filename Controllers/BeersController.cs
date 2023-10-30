@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using BrewBuddy.Data;
+using BrewBuddy.Models;
+using BrewBuddy.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using BrewBuddy.Data;
-using BrewBuddy.Models;
-using System.Reflection.Metadata;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace BrewBuddy.Controllers
 {
@@ -22,39 +16,58 @@ namespace BrewBuddy.Controllers
             _context = context;
         }
 
+        public IActionResult ListAllBeers()
+        {
+            // Retrieve all beers from the data source
+            var allBeers = _context.Beers.ToList();
+
+            // Create a list of ReadBeerViewModel instances to store the data for each beer
+            var beerViewModels = new List<ReadBeerViewModel>();
+
+            foreach (var beer in allBeers)
+            {
+                var brewery = _context.Breweries.Find(beer.BreweryId);
+                var style = _context.BeerStyles.Find(beer.StyleId);
+
+                if (brewery != null && style != null)
+                {
+                    // Create a ReadBeerViewModel for each beer and add it to the list
+                    var viewModel = new ReadBeerViewModel(beer, brewery, style);
+                    beerViewModels.Add(viewModel);
+                }
+            }
+
+            return View(beerViewModels);
+        }
+
+
         // GET: Beers
         public async Task<IActionResult> Index()
         {
-            var brewBuddyDbContext = _context.Beers.Include(b => b.Brewery).Include(b => b.Style);
-            return View(await brewBuddyDbContext.ToListAsync());
+            return ListAllBeers();
         }
 
         // GET: Beers/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null || _context.Beers == null)
-            {
-                return NotFound();
-            }
-
-            var beer = await _context.Beers
+            var beerDetails = await _context.Beers
                 .Include(b => b.Brewery)
                 .Include(b => b.Style)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (beer == null)
-            {
-                return NotFound();
-            }
+            if (beerDetails == null) { return  View("Error"); }
 
-            return View(beer);
+            var viewModel = new ReadBeerViewModel(beerDetails, beerDetails.Brewery, beerDetails.Style);
+
+            return View(viewModel);
         }
 
         // GET: Beers/Create
         public IActionResult Create()
         {
-            ViewData["BreweryId"] = new SelectList(_context.Breweries, "Id", "Name");
-            ViewData["StyleId"] = new SelectList(_context.BeerStyles, "Id", "Name");
-            return View();
+            var viewModel = new CreateBeerViewModel();
+            var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+            ViewBag.BeerStyles = styles;
+            return View(viewModel);
         }
 
         // POST: Beers/Create
@@ -62,38 +75,50 @@ namespace BrewBuddy.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id, Name, BreweryId, StyleId")] Beer beer, string breweryName)
+        public async Task<IActionResult> Create(CreateBeerViewModel viewModel)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var existingBrewery = _context.Breweries.FirstOrDefault(b => b.Name == breweryName);
+                // If the model is not valid, return to the view with validation errors.
+                var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+                ViewBag.BeerStyles = styles;
 
-                if (existingBrewery == null)
-                {
-                    // If the brewery doesn't exist, create a new one
-                    var newBrewery = new Brewery { Name = breweryName };
-                    _context.Add(newBrewery);
-                    await _context.SaveChangesAsync();
-
-                    // Set the BreweryId of the Beer object to the ID of the new brewery
-                    beer.BreweryId = newBrewery.Id;
-                }
-                else
-                {
-                    // Set the BreweryId of the Beer object to the ID of the existing brewery
-                    beer.BreweryId = existingBrewery.Id;
-                }
-                _context.Add(beer);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return View(viewModel);
             }
-            ViewData["BreweryId"] = new SelectList(_context.Breweries, "Id", "Name", beer.BreweryId);
-            ViewData["StyleId"] = new SelectList(_context.BeerStyles, "Id", "Name", beer.StyleId);
-            return View(beer);
+
+            var existingBeer = await _context.Beers.FirstOrDefaultAsync(b =>
+                b.Name == viewModel.Name &&
+                b.Brewery.Name == viewModel.BreweryName &&
+                b.Style.Id == viewModel.SelectedStyleId);
+
+            if (existingBeer != null)
+            {
+                ModelState.AddModelError("Name", "A beer with the same Name, Brewery, and Style already exists.");
+                var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+                ViewBag.BeerStyles = styles;
+
+                return View(viewModel);
+            }
+
+            var brewery = await _context.Breweries.FirstOrDefaultAsync(b => b.Name == viewModel.BreweryName);
+            var style = await _context.BeerStyles.FindAsync(viewModel.SelectedStyleId);
+
+            // Create the beer
+            var beer = new Beer
+            {
+                Name = viewModel.Name,
+                Brewery = brewery ?? new Brewery { Name = viewModel.BreweryName },
+                Style = style
+            };
+
+            _context.Beers.Add(beer);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Beers/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int id)
         {
             if (id == null || _context.Beers == null)
             {
@@ -133,7 +158,8 @@ namespace BrewBuddy.Controllers
                                            .Where(b => b.Name == breweryName)
                                            .Select(b => b.Id)
                                            .FirstOrDefaultAsync();
-                    if (currentBreweryId != null && currentBreweryId == updateToBreweryId) {
+                    if (currentBreweryId != null && currentBreweryId == updateToBreweryId)
+                    {
                         _context.Beers.Update(beer);
                         await _context.SaveChangesAsync();
                     }
@@ -259,35 +285,14 @@ namespace BrewBuddy.Controllers
                     _context.Beers.Remove(beer);
                     await _context.SaveChangesAsync();
                 }
-             }
+            }
 
             return RedirectToAction(nameof(Index));
         }
 
         private bool BeerExists(int id)
         {
-          return (_context.Beers?.Any(e => e.Id == id)).GetValueOrDefault();
+            return (_context.Beers?.Any(e => e.Id == id)).GetValueOrDefault();
         }
-
-        /// <summary>
-        /// Checks if brewery with specified name exists in the database.
-        /// </summary>
-        /// <param name="name">The name of the brewery to search for.</param>
-        /// <returns>True if a brewery with the specified name exists; otherwise, false.</returns>
-        private bool BreweryExists(string name)
-        {
-            return (_context.Breweries.Any(e => e.Name == name));
-        }
-
-        /// <summary>
-        /// Checks if a brewery with the specified ID exists in the database.
-        /// </summary>
-        /// <param name="id">The ID of the brewery to check for.</param>
-        /// <returns>True if a brewery with the specified ID exists; otherwise, false.</returns>
-        private bool BreweryExists(int id)
-        {
-            return (_context.Breweries.Any(e => e.Id == id));
-        }
-
     }
 }

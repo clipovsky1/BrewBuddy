@@ -1,4 +1,4 @@
-namespace BrewBuddy.Models
+namespace BrewBuddy.ViewModels
 {
     public class ErrorViewModel
     {

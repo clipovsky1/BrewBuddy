@@ -50,9 +50,8 @@ public partial class BrewBuddyDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__BeerStyl__3214EC07B8484D5D");
 
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.Name)
-                .HasMaxLength(12)
-                .IsFixedLength();
+            entity.Property(e => e.Name);
+            entity.Property(e => e.Description);
         });
 
         modelBuilder.Entity<Brewery>(entity =>
@@ -60,9 +59,7 @@ public partial class BrewBuddyDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Brewery__3214EC07B6A8E5A1");
 
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.Name)
-                .HasMaxLength(25)
-                .IsFixedLength();
+            entity.Property(e => e.Name);
         });
 
         OnModelCreatingPartial(modelBuilder);
