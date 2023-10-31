@@ -43,6 +43,9 @@ public partial class BrewBuddyDbContext : DbContext
             entity.HasOne(d => d.Style).WithMany(p => p.Beers)
                 .HasForeignKey(d => d.StyleId)
                 .HasConstraintName("FK_Beer_ToBeerStyle");
+
+            entity.Property(e => e.BreweryId).IsRequired();
+            entity.Property(e => e.StyleId).IsRequired();
         });
 
         modelBuilder.Entity<BeerStyle>(entity =>

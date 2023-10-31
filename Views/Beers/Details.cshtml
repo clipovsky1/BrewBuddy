@@ -1,4 +1,4 @@
-﻿@model BrewBuddy.ViewModels.ReadBeerViewModel
+﻿@model BrewBuddy.ViewModels.BeerViewModel
 
 @{
     ViewData["Title"] = "Details";
@@ -11,26 +11,26 @@
     <hr />
     <dl class="row">
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Beer)
+            @Html.DisplayNameFor(model => model.Name)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Beer.Name)
+            @Html.DisplayFor(model => model.Name)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Brewery)
+            @Html.DisplayNameFor(model => model.BreweryName)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Brewery.Name)
+            @Html.DisplayFor(model => model.BreweryName)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Style)
+            @Html.DisplayNameFor(model => model.StyleName)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Style.Name)
+            @Html.DisplayFor(model => model.StyleName)
         </dd>
     </dl>
 </div>
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.Beer.Id">Edit</a> |
+    <a asp-action="Edit" asp-route-id="@Model.Id">Edit</a> |
     <a asp-action="Index">Back to List</a>
 </div>

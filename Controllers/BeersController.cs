@@ -16,25 +16,28 @@ namespace BrewBuddy.Controllers
             _context = context;
         }
 
-        public IActionResult ListAllBeers()
+        public async Task<IActionResult> ListAllBeers()
         {
-            // Retrieve all beers from the data source
-            var allBeers = _context.Beers.ToList();
+            var allBeers = await _context.Beers
+                .Include(b => b.Brewery)
+                .Include(b => b.Style)
+                .ToListAsync();
 
-            // Create a list of ReadBeerViewModel instances to store the data for each beer
-            var beerViewModels = new List<ReadBeerViewModel>();
+            var beerViewModels = new List<BeerViewModel>();
 
             foreach (var beer in allBeers)
             {
-                var brewery = _context.Breweries.Find(beer.BreweryId);
-                var style = _context.BeerStyles.Find(beer.StyleId);
-
-                if (brewery != null && style != null)
+                var viewModel = new BeerViewModel
                 {
-                    // Create a ReadBeerViewModel for each beer and add it to the list
-                    var viewModel = new ReadBeerViewModel(beer, brewery, style);
-                    beerViewModels.Add(viewModel);
-                }
+                    Id = beer.Id,
+                    Name = beer.Name,
+                    BreweryId = beer.BreweryId,
+                    StyleId = beer.StyleId,
+                    BreweryName = beer.Brewery.Name,
+                    StyleName = beer.Style.Name,
+                    StyleDescription = beer.Style.Description
+                };
+                beerViewModels.Add(viewModel);
             }
 
             return View(beerViewModels);
@@ -44,28 +47,38 @@ namespace BrewBuddy.Controllers
         // GET: Beers
         public async Task<IActionResult> Index()
         {
-            return ListAllBeers();
+            return await ListAllBeers();
         }
 
         // GET: Beers/Details/5
         public async Task<IActionResult> Details(int id)
         {
-            var beerDetails = await _context.Beers
+            var details = await _context.Beers
                 .Include(b => b.Brewery)
                 .Include(b => b.Style)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (beerDetails == null) { return  View("Error"); }
+            if (details == null) { return  View("Error"); }
 
-            var viewModel = new ReadBeerViewModel(beerDetails, beerDetails.Brewery, beerDetails.Style);
+            var viewModel = new BeerViewModel
+            {
+                Id = details.Id,
+                Name = details.Name,
+                BreweryId = details.BreweryId,
+                StyleId = details.StyleId,
+                BreweryName = details.Brewery.Name,
+                StyleName = details.Style.Name,
+                StyleDescription = details.Style.Description
+            };
 
             return View(viewModel);
         }
 
         // GET: Beers/Create
-        public IActionResult Create()
+        [HttpGet]
+        public async Task<IActionResult> Create()
         {
             var viewModel = new CreateBeerViewModel();
-            var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+            var styles = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
             ViewBag.BeerStyles = styles;
             return View(viewModel);
         }
@@ -80,7 +93,7 @@ namespace BrewBuddy.Controllers
             if (!ModelState.IsValid)
             {
                 // If the model is not valid, return to the view with validation errors.
-                var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+                var styles = new SelectList(await _context.BeerStyles.ToListAsync(), "Id", "Name");
                 ViewBag.BeerStyles = styles;
 
                 return View(viewModel);
@@ -94,7 +107,7 @@ namespace BrewBuddy.Controllers
             if (existingBeer != null)
             {
                 ModelState.AddModelError("Name", "A beer with the same Name, Brewery, and Style already exists.");
-                var styles = new SelectList(_context.BeerStyles, "Id", "Name");
+                var styles = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
                 ViewBag.BeerStyles = styles;
 
                 return View(viewModel);
@@ -109,6 +122,7 @@ namespace BrewBuddy.Controllers
                 Name = viewModel.Name,
                 Brewery = brewery ?? new Brewery { Name = viewModel.BreweryName },
                 Style = style
+
             };
 
             _context.Beers.Add(beer);
@@ -132,7 +146,7 @@ namespace BrewBuddy.Controllers
             }
 
             ViewData["BreweryName"] = _context.Breweries.FirstOrDefault(b => b.Id == beer.BreweryId)?.Name ?? string.Empty;
-            ViewData["StyleId"] = new SelectList(_context.BeerStyles, "Id", "Name", beer.StyleId);
+            ViewData["StyleId"] = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
             return View(beer);
         }
 
@@ -228,7 +242,7 @@ namespace BrewBuddy.Controllers
                 return RedirectToAction(nameof(Index));
             }
             ViewData["BreweryId"] = new SelectList(_context.Breweries, "Id", "Id", beer.BreweryId);
-            ViewData["StyleId"] = new SelectList(_context.BeerStyles, "Id", "Id", beer.StyleId);
+            ViewData["StyleId"] = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
             return View(beer);
         }
 
