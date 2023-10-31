@@ -132,22 +132,34 @@ namespace BrewBuddy.Controllers
         }
 
         // GET: Beers/Edit/5
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            if (id == null || _context.Beers == null)
+
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                return View();
             }
 
-            var beer = await _context.Beers.FindAsync(id);
+            var beer = await _context.Beers
+                .Include(b => b.Brewery)
+                .Include(b => b.Style)
+                .FirstOrDefaultAsync(b => b.Id == id);
+
             if (beer == null)
             {
                 return NotFound();
             }
 
-            ViewData["BreweryName"] = _context.Breweries.FirstOrDefault(b => b.Id == beer.BreweryId)?.Name ?? string.Empty;
-            ViewData["StyleId"] = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
-            return View(beer);
+
+            var viewModel = new EditBeerViewModel
+            {
+                Name = beer.Name,
+                BreweryName = beer.Brewery.Name,
+                SelectedStyleId = beer.StyleId
+            };
+            ViewBag.StyleId = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
+            return View(viewModel);
         }
 
         // POST: Beers/Edit/5
@@ -155,101 +167,39 @@ namespace BrewBuddy.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,BreweryId,StyleId")] Beer beer, String breweryName)
+        public async Task<IActionResult> Edit(int id, EditBeerViewModel viewModel)
         {
-            if (id != beer.Id)
+            if (!ModelState.IsValid)
+            {
+                // If the ModelState is not valid, return to the Edit view with the provided viewModel.
+                ViewBag.StyleId = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
+                return View(viewModel);
+            }
+
+            // Fetch the beer from the database.
+            var beer = await _context.Beers.FindAsync(id);
+
+            if (beer == null)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    // check if brewery to update to is in database. This default returns 0 if nothing is found. Ids shouldn't ever be 0?
-                    var currentBreweryId = beer.BreweryId;
-                    int updateToBreweryId = await _context.Breweries
-                                           .Where(b => b.Name == breweryName)
-                                           .Select(b => b.Id)
-                                           .FirstOrDefaultAsync();
-                    if (currentBreweryId != null && currentBreweryId == updateToBreweryId)
-                    {
-                        _context.Beers.Update(beer);
-                        await _context.SaveChangesAsync();
-                    }
-                    else if (updateToBreweryId != 0 && currentBreweryId != null)
-                    {
-                        beer.BreweryId = updateToBreweryId;
-                        _context.Beers.Update(beer);
-                        await _context.SaveChangesAsync();
-                        // check if previousBreweryId was only instantiated with Beer at hand.
-                        int count = await _context.Beers
-                                              .Where(b => b.Id == currentBreweryId)
-                                              .CountAsync();
-                        if (count < 1)
-                        {
-                            var breweryToDelete = await _context.Breweries.FindAsync(currentBreweryId);
-                            if (breweryToDelete != null)
-                            {
-                                _context.Breweries.Remove(breweryToDelete);
-                                await _context.SaveChangesAsync();
-                            }
-                        }
+            // Update the beer properties with the values from the viewModel.
+            beer.Name = viewModel.Name;
+            beer.StyleId = viewModel.SelectedStyleId;
 
-                    }
-                    else
-                    {
-                        // Brewery is not in database and needs to to be created.
-                        Brewery newBrewery = new() { Name = breweryName };
-                        _context.Breweries.Add(newBrewery);
-                        _context.SaveChanges();
+            // Save the changes to the database.
+            _context.Update(beer);
+            await _context.SaveChangesAsync();
 
-                        int newBreweryId = await _context.Breweries
-                                                 .Where(b => b.Name == breweryName)
-                                                 .Select(b => b.Id)
-                                                 .FirstOrDefaultAsync();
-                        beer.BreweryId = newBreweryId;
-                        _context.Beers.Update(beer);
-                        await _context.SaveChangesAsync();
-
-                        int count = await _context.Beers
-                                    .Where(b => b.BreweryId == currentBreweryId)
-                                    .CountAsync();
-                        if (count < 1)
-                        {
-                            var breweryToDelete = await _context.Breweries.FindAsync(currentBreweryId);
-                            if (breweryToDelete != null)
-                            {
-                                _context.Breweries.Remove(breweryToDelete);
-                                await _context.SaveChangesAsync();
-                            }
-                        }
-
-                    }
-                    // End of try
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!BeerExists(beer.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["BreweryId"] = new SelectList(_context.Breweries, "Id", "Id", beer.BreweryId);
-            ViewData["StyleId"] = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
-            return View(beer);
+            // Redirect to the index action.
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Beers/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null || _context.Beers == null)
+            if (_context.Beers == null)
             {
                 return NotFound();
             }
@@ -263,50 +213,38 @@ namespace BrewBuddy.Controllers
                 return NotFound();
             }
 
-            return View(beer);
+            var viewModel = new DeleteBeerViewModel
+            {
+                Id = id,
+                Name = beer.Name,
+                BreweryName = beer.Brewery.Name,
+                StyleName = beer.Style.Name
+            };
+
+            return View(viewModel);
         }
 
         // POST: Beers/Delete/5
-        [HttpPost, ActionName("Delete")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> Delete(DeleteBeerViewModel viewModel)
         {
-            if (_context.Beers == null)
+            if (!ModelState.IsValid)
             {
-                return Problem("Entity set 'BrewBuddyDbContext.Beers'  is null.");
+                return View(viewModel);
             }
 
-            var beer = await _context.Beers.FindAsync(id);
-            if (beer != null && beer.BreweryId != null)
+            var id = viewModel.Id;
+            var beer = await _context.Beers.FirstOrDefaultAsync(b => b.Id == id);
+
+            if (beer == null)
             {
-                var countBreweryIdInstances = await _context.Beers.CountAsync(b => b.BreweryId == beer.BreweryId);
-                if (countBreweryIdInstances <= 1)
-                {
-                    var breweryId = (int)beer.BreweryId;
-                    var breweryToRemove = new Brewery { Id = breweryId };
-                    // Remove the brewery and the beer in a single transaction
-                    using (var transaction = _context.Database.BeginTransaction())
-                    {
-                        _context.Breweries.Remove(breweryToRemove);
-                        _context.Beers.Remove(beer);
-                        await _context.SaveChangesAsync();
-                        transaction.Commit();
-                    }
-                }
-                else
-                {
-                    // Only remove the beer
-                    _context.Beers.Remove(beer);
-                    await _context.SaveChangesAsync();
-                }
+                return BadRequest();
             }
 
+            _context.Beers.Remove(beer);
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool BeerExists(int id)
-        {
-            return (_context.Beers?.Any(e => e.Id == id)).GetValueOrDefault();
         }
     }
 }
