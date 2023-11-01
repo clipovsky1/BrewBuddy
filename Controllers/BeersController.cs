@@ -57,7 +57,7 @@ namespace BrewBuddy.Controllers
                 .Include(b => b.Brewery)
                 .Include(b => b.Style)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (details == null) { return  View("Error"); }
+            if (details == null) { return View("Error"); }
 
             var viewModel = new BeerViewModel
             {
@@ -185,11 +185,21 @@ namespace BrewBuddy.Controllers
             }
 
             // Update the beer properties with the values from the viewModel.
-            beer.Name = viewModel.Name;
-            beer.StyleId = viewModel.SelectedStyleId;
+            var brewery = await _context.Breweries
+                .FirstOrDefaultAsync(b => b.Name == viewModel.BreweryName);
+            var style = await _context.BeerStyles.FindAsync(viewModel.SelectedStyleId);
 
-            // Save the changes to the database.
-            _context.Update(beer);
+            // Check if the original brewery has no associated beers
+            var breweryToDelete = await _context.Breweries.FirstOrDefaultAsync(b => b.Id == beer.BreweryId);
+            if (breweryToDelete != null && await _context.Beers.CountAsync(b => b.BreweryId == beer.BreweryId) <= 1)
+            {
+                _context.Remove(breweryToDelete);
+            }
+
+            beer.Name = viewModel.Name;
+            beer.Brewery = brewery ?? new Brewery { Name = viewModel.BreweryName };
+            beer.Style = style;
+
             await _context.SaveChangesAsync();
 
             // Redirect to the index action.
@@ -239,11 +249,24 @@ namespace BrewBuddy.Controllers
 
             if (beer == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
             _context.Beers.Remove(beer);
+            var countBeersWithBrewery = await _context.Beers.CountAsync(b => b.BreweryId == beer.BreweryId);
+
             await _context.SaveChangesAsync();
+
+            // Check if the brewery has no associated beers
+            if (countBeersWithBrewery == 1)
+            {
+                // If no associated beers, remove the brewery
+                var brewery = _context.Breweries.FirstOrDefault(b => b.Id == beer.BreweryId);
+                _context.Breweries.Remove(brewery);
+            }
+
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
     }

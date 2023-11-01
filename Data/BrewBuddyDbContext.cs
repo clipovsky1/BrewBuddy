@@ -38,7 +38,8 @@ public partial class BrewBuddyDbContext : DbContext
 
             entity.HasOne(d => d.Brewery).WithMany(p => p.Beers)
                 .HasForeignKey(d => d.BreweryId)
-                .HasConstraintName("FK_Beer_ToBrewery");
+                .HasConstraintName("FK_Beer_ToBrewery")
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.Style).WithMany(p => p.Beers)
                 .HasForeignKey(d => d.StyleId)
@@ -60,7 +61,6 @@ public partial class BrewBuddyDbContext : DbContext
         modelBuilder.Entity<Brewery>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Brewery__3214EC07B6A8E5A1");
-
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.Name);
         });
