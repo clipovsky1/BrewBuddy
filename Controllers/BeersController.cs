@@ -35,11 +35,13 @@ namespace BrewBuddy.Controllers
                     StyleId = beer.StyleId,
                     BreweryName = beer.Brewery.Name,
                     StyleName = beer.Style.Name,
-                    StyleDescription = beer.Style.Description
+                    StyleDescription = beer.Style.Description,
+                    Date = beer.Date,
+                    Rating = beer.Rating
                 };
                 beerViewModels.Add(viewModel);
             }
-
+            beerViewModels = beerViewModels.OrderByDescending(b => b.Date).ToList();
             return View(beerViewModels);
         }
 
@@ -67,7 +69,9 @@ namespace BrewBuddy.Controllers
                 StyleId = details.StyleId,
                 BreweryName = details.Brewery.Name,
                 StyleName = details.Style.Name,
-                StyleDescription = details.Style.Description
+                StyleDescription = details.Style.Description,
+                Date = details.Date,
+                Rating = details.Rating
             };
 
             return View(viewModel);
@@ -80,6 +84,7 @@ namespace BrewBuddy.Controllers
             var viewModel = new CreateBeerViewModel();
             var styles = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
             ViewBag.BeerStyles = styles;
+            ViewBag.Rating = new SelectList(Enumerable.Range(1, 5));
             return View(viewModel);
         }
 
@@ -95,6 +100,7 @@ namespace BrewBuddy.Controllers
                 // If the model is not valid, return to the view with validation errors.
                 var styles = new SelectList(await _context.BeerStyles.ToListAsync(), "Id", "Name");
                 ViewBag.BeerStyles = styles;
+                ViewBag.Rating = new SelectList(Enumerable.Range(1, 5));
 
                 return View(viewModel);
             }
@@ -109,6 +115,7 @@ namespace BrewBuddy.Controllers
                 ModelState.AddModelError("Name", "A beer with the same Name, Brewery, and Style already exists.");
                 var styles = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
                 ViewBag.BeerStyles = styles;
+                ViewBag.Rating = new SelectList(Enumerable.Range(1, 5));
 
                 return View(viewModel);
             }
@@ -121,8 +128,9 @@ namespace BrewBuddy.Controllers
             {
                 Name = viewModel.Name,
                 Brewery = brewery ?? new Brewery { Name = viewModel.BreweryName },
-                Style = style
-
+                Style = style,
+                Rating = viewModel.Rating,
+                Date = DateTime.Now
             };
 
             _context.Beers.Add(beer);
@@ -156,9 +164,11 @@ namespace BrewBuddy.Controllers
             {
                 Name = beer.Name,
                 BreweryName = beer.Brewery.Name,
-                SelectedStyleId = beer.StyleId
+                SelectedStyleId = beer.StyleId,
+                Rating = beer.Rating
             };
             ViewBag.StyleId = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
+            ViewBag.Rating = new SelectList(Enumerable.Range(1, 5));
             return View(viewModel);
         }
 
@@ -173,6 +183,7 @@ namespace BrewBuddy.Controllers
             {
                 // If the ModelState is not valid, return to the Edit view with the provided viewModel.
                 ViewBag.StyleId = new SelectList(await _context.BeerStyles.OrderBy(s => s.Name).ToListAsync(), "Id", "Name");
+                ViewBag.Rating = new SelectList(Enumerable.Range(1, 5));
                 return View(viewModel);
             }
 
@@ -187,20 +198,23 @@ namespace BrewBuddy.Controllers
             // Update the beer properties with the values from the viewModel.
             var brewery = await _context.Breweries
                 .FirstOrDefaultAsync(b => b.Name == viewModel.BreweryName);
+            var originalBrewery = await _context.Breweries.FirstOrDefaultAsync(b => b.Id == beer.BreweryId);
             var style = await _context.BeerStyles.FindAsync(viewModel.SelectedStyleId);
-
-            // Check if the original brewery has no associated beers
-            var breweryToDelete = await _context.Breweries.FirstOrDefaultAsync(b => b.Id == beer.BreweryId);
-            if (breweryToDelete != null && await _context.Beers.CountAsync(b => b.BreweryId == beer.BreweryId) <= 1)
-            {
-                _context.Remove(breweryToDelete);
-            }
 
             beer.Name = viewModel.Name;
             beer.Brewery = brewery ?? new Brewery { Name = viewModel.BreweryName };
             beer.Style = style;
+            beer.Rating = viewModel.Rating;
 
+            _context.Update(beer);
             await _context.SaveChangesAsync();
+
+
+            if (originalBrewery != null && await _context.Beers.CountAsync(b => b.BreweryId == originalBrewery.Id) < 1)
+            {
+                _context.Remove(originalBrewery);
+                await _context.SaveChangesAsync();
+            }
 
             // Redirect to the index action.
             return RedirectToAction(nameof(Index));

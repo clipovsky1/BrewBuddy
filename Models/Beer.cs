@@ -12,8 +12,14 @@ public partial class Beer
     public int BreweryId { get; set; }
 
     public int StyleId { get; set; }
+     
+    public byte Rating { get; set; }
 
-    public virtual Brewery Brewery { get; set; }
+    public DateTime Date { get; set; }
 
-    public virtual BeerStyle Style { get; set; }
+    public string? Notes { get; set; }
+
+    public virtual Brewery Brewery { get; set; } = null!;
+
+    public virtual BeerStyle Style { get; set; } = null!;
 }

@@ -13,5 +13,8 @@ namespace BrewBuddy.ViewModels
         [Required(ErrorMessage = "The Beer Style field is required.")]
         public int SelectedStyleId { get; set; }
 
+        [Required(ErrorMessage = "The Rating field is required.")]
+        public byte Rating { get; set; }
+
     }
 }

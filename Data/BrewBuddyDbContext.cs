@@ -23,46 +23,37 @@ public partial class BrewBuddyDbContext : DbContext
     public virtual DbSet<Brewery> Breweries { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Data Source=LIPOVSKYC-PC;Initial Catalog=BrewBuddyDb;Integrated Security=True;TrustServerCertificate=true");
+        => optionsBuilder.UseSqlServer("Data Source=LIPOVSKYC-PC;Initial Catalog=BrewBuddyDb;Integrated Security=True;TrustServerCertificate=true\n");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Beer>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Beer__3214EC07334BBD2E");
+            entity.HasKey(e => e.Id).HasName("PK__tmp_ms_x__3214EC074A3E7A34");
 
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .IsFixedLength();
+            entity.HasIndex(e => e.BreweryId, "IX_Beers_BreweryId");
+
+            entity.HasIndex(e => e.StyleId, "IX_Beers_StyleId");
 
             entity.HasOne(d => d.Brewery).WithMany(p => p.Beers)
                 .HasForeignKey(d => d.BreweryId)
-                .HasConstraintName("FK_Beer_ToBrewery")
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasConstraintName("FK_Beer_ToBrewery");
 
             entity.HasOne(d => d.Style).WithMany(p => p.Beers)
                 .HasForeignKey(d => d.StyleId)
                 .HasConstraintName("FK_Beer_ToBeerStyle");
-
-            entity.Property(e => e.BreweryId).IsRequired();
-            entity.Property(e => e.StyleId).IsRequired();
         });
 
         modelBuilder.Entity<BeerStyle>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BeerStyl__3214EC07B8484D5D");
+            entity.HasKey(e => e.Id).HasName("PK__tmp_ms_x__3214EC07AB057972");
 
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.Name);
-            entity.Property(e => e.Description);
+            entity.Property(e => e.Description).HasColumnType("text");
         });
 
         modelBuilder.Entity<Brewery>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Brewery__3214EC07B6A8E5A1");
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.Name);
+            entity.HasKey(e => e.Id).HasName("PK__tmp_ms_x__3214EC07BECBCBAC");
         });
 
         OnModelCreatingPartial(modelBuilder);
