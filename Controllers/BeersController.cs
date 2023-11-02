@@ -283,5 +283,35 @@ namespace BrewBuddy.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> Ajax(int id)
+        {
+
+            var beer = await _context.Beers.FirstOrDefaultAsync(b => b.Id == id);
+
+            if (beer == null)
+            {
+                return NotFound();
+            }
+
+            _context.Beers.Remove(beer);
+            var countBeersWithBrewery = await _context.Beers.CountAsync(b => b.BreweryId == beer.BreweryId);
+
+            await _context.SaveChangesAsync();
+
+            // Check if the brewery has no associated beers
+            if (countBeersWithBrewery == 1)
+            {
+                // If no associated beers, remove the brewery
+                var brewery = _context.Breweries.FirstOrDefault(b => b.Id == beer.BreweryId);
+                _context.Breweries.Remove(brewery);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
+
     }
 }

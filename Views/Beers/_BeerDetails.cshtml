@@ -1,0 +1,32 @@
+﻿@model BrewBuddy.ViewModels.BeerViewModel
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="card-@Model.Id">
+            <div class="card-header">
+                <button type="submit" class="btn-close float-end show-delete-modal" data-toggle="modal" data-target="#deleteConfirmationModal"></button>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">@Model.Name</h5>
+                <h6 class="card-subtitle mb-2 text-muted">@Model.BreweryName</h6>
+                <p class="card-text">@Model.StyleDescription</p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Style:</strong> @Model.StyleName</li>
+                    <li class="list-group-item"><strong>Rating:</strong> @Model.Rating</li>
+                    <li class="list-group-item"><strong>Date:</strong> @Model.Date.ToString("MM/dd/yyyy")</li>
+                </ul>
+                <div class="float-end">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">Edit</a>
+                </div>
+                @Html.Partial("_DeleteBeerConfirmation", Model)
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+

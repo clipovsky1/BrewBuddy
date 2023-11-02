@@ -26,36 +26,13 @@
             <a asp-action="Create" class="btn btn-success mb-4">New Brew</a>
         </div>
 
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>@Html.DisplayNameFor(model => model.Name)</th>
-                    <th>@Html.DisplayNameFor(model => model.BreweryName)</th>
-                    <th>@Html.DisplayNameFor(model => model.StyleName)</th>
-                    <th>@Html.DisplayNameFor(model => model.Rating)</th>
-                    <th>@Html.DisplayNameFor(model => model.Date)</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
+        <table class="table table-borderless">
+            <tbody class="">
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                        <td>@Html.DisplayFor(modelItem => item.BreweryName)</td>
-                        <td title="@Html.DisplayFor(modelItem => item.StyleDescription)">
-                            @Html.DisplayFor(modelItem => item.StyleName)
-                        </td>
-                        <td title="@Html.DisplayFor(modelItem => item.Rating)">
-                            @Html.DisplayFor(modelItem => item.Rating)
-                        </td>
-                        <td title="@Html.DisplayFor(modelItem => item.Date)">
-                            @Html.DisplayFor(modelItem => item.Date)
-                        </td>
-                        <td class="">
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn">Edit</a>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn">Details</a>
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger">Delete</a>
+                        <td class="mb-3">
+                            @Html.Partial("_BeerDetails", item)
                         </td>
                     </tr>
                 }
@@ -64,4 +41,15 @@
     </div>
 </body>
 </html>
- 
+
+<script>
+    $(function () {
+        $('body').on('click', '.show-delete-modal', function () {
+            var card = $(this).closest('.card');
+            var modal = card.find('.modal');
+            modal.modal('show');
+        });
+    });
+</script>
+
+
