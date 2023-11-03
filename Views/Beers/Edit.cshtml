@@ -29,8 +29,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label asp-for="Rating">Rating</label>
-                    <select asp-for="Rating" asp-items="ViewBag.Rating" class="form-control"></select>
+                    <label for="beerRating" class="form-label">Rating</label>
+                    <input asp-for ="Rating" type="range" class="form-range" id="beerRating" min="1" max="5" step="1">
                     <span asp-validation-for="Rating" class="text-danger"></span>
                 </div>
 
